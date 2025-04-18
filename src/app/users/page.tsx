@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 type User = {
   _id: string;
   name: string;
-  contribution: number;
+  contributions: number[];
   bankName: string;
   bankAccountNo: string;
   userType: 'Admin' | 'User';
@@ -52,7 +52,7 @@ async function updateUser(user: User): Promise<void> {
       },
       body: JSON.stringify({
         name: user.name,
-        contribution: user.contribution,
+        contributions: user.contributions,
         bankName: user.bankName,
         bankAccountNo: user.bankAccountNo,
         userType: user.userType,
@@ -73,7 +73,7 @@ export default function UsersPage() {
     Omit<User, '_id'> & { _id?: string }
   >({
     name: '',
-    contribution: 0,
+    contributions: [],
     bankName: '',
     bankAccountNo: '',
     userType: 'User',
@@ -101,14 +101,24 @@ export default function UsersPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    if (name === 'contribution') {
-      setFormData({ ...formData, [name]: parseFloat(value) || 0 });
-    } else if (name === 'receivableMonths') {
+    if (name === 'receivableMonths') {
       const selectedMonths = Array.from(
         (e.target as HTMLSelectElement).selectedOptions,
         (option) => option.value
       );
-      setFormData({ ...formData, receivableMonths: selectedMonths });
+      // Initialize contributions array with zeros for each selected month
+      const newContributions = new Array(selectedMonths.length).fill(0);
+      setFormData({
+        ...formData,
+        receivableMonths: selectedMonths,
+        contributions: newContributions,
+      });
+    } else if (name.startsWith('contributions_')) {
+      // Handle contributions input for a specific month
+      const index = parseInt(name.split('_')[1], 10);
+      const newContributions = [...formData.contributions];
+      newContributions[index] = parseFloat(value) || 0;
+      setFormData({ ...formData, contributions: newContributions });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -125,7 +135,7 @@ export default function UsersPage() {
         const updatedUser: User = {
           _id: formData._id,
           name: formData.name,
-          contribution: formData.contribution,
+          contributions: formData.contributions,
           bankName: formData.bankName,
           bankAccountNo: formData.bankAccountNo,
           userType: formData.userType,
@@ -136,7 +146,7 @@ export default function UsersPage() {
         // Add new user
         const newUser: Omit<User, '_id'> = {
           name: formData.name,
-          contribution: formData.contribution,
+          contributions: formData.contributions,
           bankName: formData.bankName,
           bankAccountNo: formData.bankAccountNo,
           userType: formData.userType,
@@ -152,7 +162,7 @@ export default function UsersPage() {
       // Reset form and hide it
       setFormData({
         name: '',
-        contribution: 0,
+        contributions: [],
         bankName: '',
         bankAccountNo: '',
         userType: 'User',
@@ -170,7 +180,7 @@ export default function UsersPage() {
     setFormData({
       _id: user._id,
       name: user.name,
-      contribution: user.contribution,
+      contributions: user.contributions,
       bankName: user.bankName,
       bankAccountNo: user.bankAccountNo,
       userType: user.userType,
@@ -184,7 +194,7 @@ export default function UsersPage() {
   const handleAddUserClick = () => {
     setFormData({
       name: '',
-      contribution: 0,
+      contributions: [],
       bankName: '',
       bankAccountNo: '',
       userType: 'User',
@@ -232,16 +242,53 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label className="block text-gray-600 mb-1">Contribution ($)</label>
-              <input
-                type="number"
-                name="contribution"
-                value={formData.contribution}
+              <label className="block text-gray-600 mb-1">
+                Receivable Months
+              </label>
+              <select
+                name="receivableMonths"
+                multiple
+                value={formData.receivableMonths}
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded"
-                required
-              />
+              >
+                <option value="Jan">January</option>
+                <option value="Feb">February</option>
+                <option value="March">March</option>
+                <option value="April">April</option>
+                <option value="May">May</option>
+                <option value="June">June</option>
+                <option value="July">July</option>
+                <option value="Aug">August</option>
+                <option value="Sep">September</option>
+                <option value="Oct">October</option>
+                <option value="Nov">November</option>
+                <option value="Dec">December</option>
+              </select>
+              <p className="text-sm text-gray-500 mt-1">
+                Hold Ctrl (or Cmd) to select multiple months
+              </p>
             </div>
+            {formData.receivableMonths.length > 0 && (
+              <div>
+                <label className="block text-gray-600 mb-1">Contributions ($)</label>
+                {formData.receivableMonths.map((month, index) => (
+                  <div key={month} className="mb-2">
+                    <label className="block text-gray-600 text-sm">
+                      {month}
+                    </label>
+                    <input
+                      type="number"
+                      name={`contributions_${index}`}
+                      value={formData.contributions[index] || 0}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border rounded"
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             <div>
               <label className="block text-gray-600 mb-1">Bank Name</label>
               <input
@@ -278,34 +325,6 @@ export default function UsersPage() {
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div>
-              <label className="block text-gray-600 mb-1">
-                Receivable Months
-              </label>
-              <select
-                name="receivableMonths"
-                multiple
-                value={formData.receivableMonths}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded"
-              >
-                <option value="Jan">January</option>
-                <option value="Feb">February</option>
-                <option value="March">March</option>
-                <option value="April">April</option>
-                <option value="May">May</option>
-                <option value="June">June</option>
-                <option value="July">July</option>
-                <option value="Aug">August</option>
-                <option value="Sep">September</option>
-                <option value="Oct">October</option>
-                <option value="Nov">November</option>
-                <option value="Dec">December</option>
-              </select>
-              <p className="text-sm text-gray-500 mt-1">
-                Hold Ctrl (or Cmd) to select multiple months
-              </p>
-            </div>
             <div className="flex space-x-4">
               <button
                 type="submit"
@@ -320,7 +339,7 @@ export default function UsersPage() {
                   setIsEditing(false);
                   setFormData({
                     name: '',
-                    contribution: 0,
+                    contributions: [],
                     bankName: '',
                     bankAccountNo: '',
                     userType: 'User',
@@ -342,7 +361,7 @@ export default function UsersPage() {
           <thead>
             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">Name</th>
-              <th className="py-3 px-6 text-left">Contribution</th>
+              <th className="py-3 px-6 text-left">Contributions</th>
               <th className="py-3 px-6 text-left">Bank Name</th>
               <th className="py-3 px-6 text-left">Bank Account No</th>
               <th className="py-3 px-6 text-left">User Type</th>
@@ -357,7 +376,11 @@ export default function UsersPage() {
                 className="border-b border-gray-200 hover:bg-gray-100"
               >
                 <td className="py-3 px-6">{user.name}</td>
-                <td className="py-3 px-6">${user.contribution}</td>
+                <td className="py-3 px-6">
+                  {user.contributions.reduce((acc, amount) => (
+                    acc + amount
+                  ), 0)}
+                </td>
                 <td className="py-3 px-6">{user.bankName}</td>
                 <td className="py-3 px-6">{user.bankAccountNo}</td>
                 <td className="py-3 px-6">{user.userType}</td>
